@@ -7,9 +7,11 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Image as ImageType } from "@/types";
-import { Edit, Trash2 } from "lucide-react";
+import { Edit, Trash2, ThumbsUp, ThumbsDown } from "lucide-react";
 import ImageModal from "./ImageModal";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
+import { useVotes } from "@/hooks/useVotes";
+import { cn } from "@/lib/utils";
 
 interface ImageCardProps {
   image: ImageType;
@@ -19,6 +21,8 @@ const ImageCard = ({ image }: ImageCardProps) => {
   const [showDetails, setShowDetails] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  
+  const { voteCount, isLoading, isVoting, upvote, downvote } = useVotes(image.id);
 
   return (
     <>
@@ -32,6 +36,19 @@ const ImageCard = ({ image }: ImageCardProps) => {
           >
             <h3 className="text-white font-bold text-lg truncate">{image.title}</h3>
             <p className="text-sm text-gray-300 line-clamp-2">{image.description}</p>
+            
+            {/* Vote count info shown on hover */}
+            <div className="flex items-center mt-2 text-xs text-gray-400">
+              <span className="flex items-center">
+                <ThumbsUp className="h-3 w-3 mr-1" /> 
+                {voteCount.upvotes}
+              </span>
+              <span className="mx-2">|</span>
+              <span className="flex items-center">
+                <ThumbsDown className="h-3 w-3 mr-1" /> 
+                {voteCount.downvotes}
+              </span>
+            </div>
           </div>
           <img
             src={image.url}
@@ -41,22 +58,51 @@ const ImageCard = ({ image }: ImageCardProps) => {
           />
         </CardContent>
         <CardFooter className="p-2 flex justify-between bg-neon-gray border-t border-neon-green/20">
-          <Button 
-            variant="ghost" 
-            size="icon"
-            className="text-gray-400 hover:text-neon-green hover:bg-transparent"
-            onClick={() => setShowEditModal(true)}
-          >
-            <Edit className="h-4 w-4" />
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="icon"
-            className="text-gray-400 hover:text-red-500 hover:bg-transparent"
-            onClick={() => setShowDeleteDialog(true)}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          <div className="flex">
+            <Button 
+              variant="ghost" 
+              size="icon"
+              disabled={isLoading || isVoting}
+              className={cn(
+                "text-gray-400 hover:text-neon-green hover:bg-transparent",
+                voteCount.userVote === 'up' && "text-neon-green"
+              )}
+              onClick={upvote}
+            >
+              <ThumbsUp className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon"
+              disabled={isLoading || isVoting}
+              className={cn(
+                "text-gray-400 hover:text-red-500 hover:bg-transparent",
+                voteCount.userVote === 'down' && "text-red-500"
+              )}
+              onClick={downvote}
+            >
+              <ThumbsDown className="h-4 w-4" />
+            </Button>
+          </div>
+          
+          <div className="flex">
+            <Button 
+              variant="ghost" 
+              size="icon"
+              className="text-gray-400 hover:text-neon-green hover:bg-transparent"
+              onClick={() => setShowEditModal(true)}
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon"
+              className="text-gray-400 hover:text-red-500 hover:bg-transparent"
+              onClick={() => setShowDeleteDialog(true)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
         </CardFooter>
       </Card>
 
