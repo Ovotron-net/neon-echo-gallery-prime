@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Image } from "@/types";
 import { useImages } from "@/contexts/ImageContext";
+import { Upload, ImagePlus } from "lucide-react";
 
 interface ImageModalProps {
   mode: "add" | "edit" | "view";
@@ -27,11 +28,17 @@ const ImageModal = ({ mode, open, onOpenChange, image }: ImageModalProps) => {
     title: string;
     description: string;
     url: string;
+    source?: 'url' | 'upload';
   }>({
     title: "",
     description: "",
     url: "",
   });
+  
+  const [uploadType, setUploadType] = useState<'url' | 'upload'>('url');
+  const [previewUrl, setPreviewUrl] = useState<string>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     if (image && (mode === "edit" || mode === "view")) {
@@ -39,13 +46,18 @@ const ImageModal = ({ mode, open, onOpenChange, image }: ImageModalProps) => {
         title: image.title,
         description: image.description,
         url: image.url,
+        source: image.source || 'url',
       });
+      setPreviewUrl(image.url);
+      setUploadType(image.source || 'url');
     } else {
       setFormData({
         title: "",
         description: "",
         url: "",
       });
+      setPreviewUrl('');
+      setUploadType('url');
     }
   }, [image, mode, open]);
 
@@ -56,16 +68,61 @@ const ImageModal = ({ mode, open, onOpenChange, image }: ImageModalProps) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setIsUploading(true);
+    
+    // Create a FileReader to read the image file
+    const reader = new FileReader();
+    
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      setPreviewUrl(dataUrl);
+      setFormData(prev => ({ 
+        ...prev, 
+        url: dataUrl,
+        source: 'upload'
+      }));
+      setIsUploading(false);
+    };
+    
+    reader.onerror = () => {
+      console.error('Error reading file');
+      setIsUploading(false);
+    };
+    
+    reader.readAsDataURL(file);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     if (mode === "add") {
-      addImage(formData);
+      addImage({
+        ...formData,
+        source: uploadType
+      });
     } else if (mode === "edit" && image) {
       updateImage(image.id, formData);
     }
     
     onOpenChange(false);
+  };
+
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
+  };
+
+  const switchToUrlUpload = () => {
+    setUploadType('url');
+    setPreviewUrl('');
+    setFormData(prev => ({
+      ...prev,
+      url: '',
+      source: 'url'
+    }));
   };
 
   const isViewOnly = mode === "view";
@@ -86,19 +143,76 @@ const ImageModal = ({ mode, open, onOpenChange, image }: ImageModalProps) => {
           <div className="grid gap-6 py-4">
             {mode !== "view" ? (
               <>
-                <div className="grid gap-2">
-                  <Label htmlFor="url" className="text-gray-300">Image URL</Label>
-                  <Input
-                    id="url"
-                    name="url"
-                    placeholder="https://example.com/image.jpg"
-                    value={formData.url}
-                    onChange={handleChange}
-                    required
-                    className="bg-neon-dark border-neon-green/30 focus-visible:ring-neon-green/50 text-white"
-                  />
-                </div>
-                {formData.url && (
+                {mode === "add" && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      type="button"
+                      variant={uploadType === 'url' ? "default" : "outline"}
+                      className={`${uploadType === 'url' ? 'bg-neon-green text-black' : 'border-neon-green/30 text-neon-green'}`}
+                      onClick={switchToUrlUpload}
+                    >
+                      URL
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={uploadType === 'upload' ? "default" : "outline"}
+                      className={`${uploadType === 'upload' ? 'bg-neon-green text-black' : 'border-neon-green/30 text-neon-green'}`}
+                      onClick={() => setUploadType('upload')}
+                    >
+                      Upload
+                    </Button>
+                  </div>
+                )}
+                
+                {uploadType === 'url' ? (
+                  <div className="grid gap-2">
+                    <Label htmlFor="url" className="text-gray-300">Image URL</Label>
+                    <Input
+                      id="url"
+                      name="url"
+                      placeholder="https://example.com/image.jpg"
+                      value={formData.url}
+                      onChange={handleChange}
+                      required={uploadType === 'url'}
+                      className="bg-neon-dark border-neon-green/30 focus-visible:ring-neon-green/50 text-white"
+                    />
+                  </div>
+                ) : (
+                  <div className="grid gap-2">
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      style={{ display: 'none' }}
+                    />
+                    <div 
+                      className="border-2 border-dashed border-neon-green/30 rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer hover:border-neon-green/50 transition-colors"
+                      onClick={triggerFileInput}
+                    >
+                      {previewUrl ? (
+                        <div className="w-full aspect-video relative overflow-hidden rounded-md">
+                          <img
+                            src={previewUrl}
+                            alt="Preview"
+                            className="object-cover w-full h-full"
+                          />
+                          <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                            <ImagePlus className="h-8 w-8 text-white" />
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <Upload className="h-10 w-10 text-neon-green mb-2" />
+                          <p className="text-gray-300 text-sm">Click to upload an image</p>
+                          <p className="text-gray-400 text-xs mt-1">PNG, JPG, GIF up to 10MB</p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+                
+                {(formData.url || previewUrl) && uploadType === 'url' && (
                   <div className="relative aspect-video w-full overflow-hidden rounded-md border border-neon-green/20">
                     <img
                       src={formData.url}
@@ -110,6 +224,7 @@ const ImageModal = ({ mode, open, onOpenChange, image }: ImageModalProps) => {
                     />
                   </div>
                 )}
+                
                 <div className="grid gap-2">
                   <Label htmlFor="title" className="text-gray-300">Title</Label>
                   <Input
@@ -161,8 +276,9 @@ const ImageModal = ({ mode, open, onOpenChange, image }: ImageModalProps) => {
               <Button 
                 type="submit" 
                 className="neon-btn-filled"
+                disabled={isUploading || (uploadType === 'url' && !formData.url) || (uploadType === 'upload' && !previewUrl)}
               >
-                {mode === "add" ? "Add Image" : "Save Changes"}
+                {isUploading ? "Uploading..." : mode === "add" ? "Add Image" : "Save Changes"}
               </Button>
             </DialogFooter>
           )}

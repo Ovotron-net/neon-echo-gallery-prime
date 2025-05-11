@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { ImagePlus } from "lucide-react";
 import ImageModal from "./ImageModal";
 
 const AddImageButton = () => {
@@ -13,7 +13,7 @@ const AddImageButton = () => {
         onClick={() => setShowAddModal(true)}
         className="neon-btn"
       >
-        <Plus className="h-4 w-4 mr-2" />
+        <ImagePlus className="h-4 w-4 mr-2" />
         Add Image
       </Button>
       

@@ -5,4 +5,5 @@ export interface Image {
   description: string;
   url: string;
   createdAt: Date;
+  source?: 'url' | 'upload';
 }
